@@ -2,6 +2,7 @@
 using Starcounter;
 using System.Linq;
 using System.IO;
+using Starcounter.Internal;
 
 namespace StarcounterShadowspanTest
 {
@@ -53,7 +54,9 @@ namespace StarcounterShadowspanTest
                     {
                         port = 8181;
                     }
-                    var db = Self.GET<Starcounter.Server.Rest.Representations.JSON.Database>($"http://localhost:{8181}/api/databases/{app.Name}/config");
+                    var resp = Http.GET($"http://localhost:{port}/api/databases/{StarcounterEnvironment.DatabaseNameLower}/config");
+                    var db = new Starcounter.Server.Rest.Representations.JSON.Database();
+                    db.PopulateFromJson(resp.Body);
                     var di = new DirectoryInfo(db.Configuration.DataDirectory);
 
                     using (var sha256 = System.Security.Cryptography.SHA256.Create())
@@ -105,7 +108,7 @@ namespace StarcounterShadowspanTest
 
             private void Write(string v)
             {
-                Console.WriteLine("Creating data");
+                Console.WriteLine(v);
                 m_writer.WriteLine(v);
             }
         }
