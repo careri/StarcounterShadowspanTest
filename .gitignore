@@ -127,3 +127,4 @@ MsbArgsParser.exe.config
 MsbArgsParser.vshost.exe.config
 MsbArgsParser.vshost.exe.manifest
 db_pub
+/db_bup/
