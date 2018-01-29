@@ -12,7 +12,7 @@ namespace StarcounterShadowspanTest
         {
             using (var helper = new Helper())
             {
-                helper.ShowHash(Application.Current);
+                helper.ShowHash();
                 Db.Transact(helper.EnsureInstance);
             }
         }
@@ -24,17 +24,22 @@ namespace StarcounterShadowspanTest
 
             public Helper()
             {
-                var assDI = new FileInfo(new Uri(GetType().Assembly.Location).LocalPath).Directory;
-                m_logPath = Path.Combine(assDI.FullName, "StarcounterShadowspanTest.log");
+                App = Application.Current;
+                var workDI = new DirectoryInfo(App.WorkingDirectory);
+                m_logPath = Path.Combine(workDI.FullName, "StarcounterShadowspanTest.log");
                 var logFI = new FileInfo(m_logPath);
                 m_writer = new StreamWriter(logFI.Open(FileMode.Create, FileAccess.Write, FileShare.Read));
-                Console.WriteLine(m_logPath);
+                m_writer.AutoFlush = true;
+                Console.WriteLine($"App logfile: {m_logPath}");
             }
+
+            public Application App { get; }
 
             public Data Instance { get; private set; }
 
             public void Dispose()
             {
+                Write($"Data: {Instance}");
                 m_writer.Dispose();
                 File.WriteAllText(m_logPath + ".done", DateTime.Now.ToString());
             }
@@ -43,7 +48,7 @@ namespace StarcounterShadowspanTest
             /// Displays the SHA256 of the log files, this should be possible since starcounter doesn't lock the files for reading.
             /// </summary>
             /// <param name="current"></param>
-            public void ShowHash(Application app)
+            public void ShowHash()
             {
                 try
                 {
@@ -100,7 +105,7 @@ namespace StarcounterShadowspanTest
                 }
                 else
                 {
-                    Write($"Read data: {Instance.GetObjectID()}, {Instance.Created}");
+                    Write($"Read data: {Instance}");
                 }
 
 
