@@ -42,7 +42,11 @@ function Directory-Delete() {
     for ($i = 0; $i -le $attempts; $i++) {
         try {
             if (Test-Path $pathToDelete) {
-                rmdir $pathToDelete -Recurse -Force                
+                rmdir $pathToDelete -Recurse -Force               
+
+                if (Test-Path $pathToDelete) {
+                    throw "Not deleted"
+                }
             }
             break;
         } catch {
@@ -53,7 +57,7 @@ function Directory-Delete() {
                 throw "Failed to delete: $pathToDelete"
             } else {                
                 Write-Warning "[$i] '$pathToDelete' Delete failed, retrying soon`n$ex"
-                sleep 100
+                Start-Sleep -Seconds 1
             }            
         }
     }
@@ -70,9 +74,10 @@ function Database-Delete() {
     } catch {
     }
     # Make sure to delete all folders as well
+    Start-Sleep -Seconds 1
     $personalDir = $scSettings.PersonalDirectory
 
-    foreach ($dbDir in @($scSettings.ImageDirectory, $scSettings.DatabaseDirectory)) {
+    foreach ($dbDir in @($scSettings.ImageDirectory, $scSettings.DatabaseDirectory, "Databases\$dbName")) {
 
         if ($dbDir) {
             $dbDirPath = Path-Combine $personalDir $dbDir
