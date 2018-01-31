@@ -12,9 +12,7 @@ namespace StarcounterShadowspanTest
         {
             using (var helper = new Helper())
             {
-                helper.ShowHash();
                 Db.Transact(helper.EnsureInstance);
-                helper.ShowHash();
             }
         }
 
@@ -62,43 +60,6 @@ namespace StarcounterShadowspanTest
                 Write($"Data: {Instance}");
                 m_writer.Dispose();
                 File.WriteAllText(m_logPath + ".done", DateTime.Now.ToString());
-            }
-
-            /// <summary>
-            /// Displays the SHA256 of the log files, this should be possible since starcounter doesn't lock the files for reading.
-            /// </summary>
-            /// <param name="current"></param>
-            public void ShowHash()
-            {
-                try
-                {
-                    var di = DataDirectory;
-
-                    using (var sha256 = System.Security.Cryptography.SHA256.Create())
-                    {
-                        foreach (var logFI in di.GetFiles("*.*log"))
-                        {
-                            try
-                            {
-                                using (var stream = logFI.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                                {
-                                    var hash = sha256.ComputeHash(stream);
-                                    Write($"[{logFI.FullName}] {Convert.ToBase64String(hash)}");
-                                }
-                            }
-                            catch (Exception fiEX)
-                            {
-                                Write($"Failed to compute file hash: {logFI.FullName}");
-                                Write(fiEX.ToString());
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Write($"Failed to compute hash");
-                    Write(ex.ToString());
-                }
             }
 
             /// <summary>
