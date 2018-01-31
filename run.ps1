@@ -107,6 +107,15 @@ function Database-Restore() {
     robocopy $dbBackupDir $scSettings.PersonalDirectory /S /E /DCOPY:DA /COPY:DAT /IS /R:5 /W:1 /NP 
 }
 
+function Database-Start() {    
+    Param(
+        [Parameter(Mandatory=$True,Position=1)]
+        $scSettings
+    )
+    Write-Host -ForegroundColor Green "Starting db: $dbName"
+    staradmin start db $dbName
+}
+
 function App-Run() {
     $doneTime = GetDoneTimestamp
     Write-Host -ForegroundColor Green "Starting: $appExe"
@@ -344,6 +353,9 @@ function MainLoop() {
 
     Database-Restore $dbSettings
     $dbSettings = GetStarcounterSettings
+
+    # Call start on the database, this should run the restored db
+    Database-Start $dbSettings
 
     App-Run
 }
