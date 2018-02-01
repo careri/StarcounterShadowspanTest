@@ -13,6 +13,8 @@ namespace StarcounterShadowspanTest
             using (var helper = new Helper())
             {
                 Db.Transact(helper.EnsureInstance);
+
+                // Print the tota
             }
         }
 
@@ -53,13 +55,17 @@ namespace StarcounterShadowspanTest
 
             public Data Instance { get; private set; }
 
+            public int Count { get; private set; }
+
+            public bool FirstRun { get; private set; }
+
             public DirectoryInfo DataDirectory => new DirectoryInfo(m_dataDirectory.Value);
 
             public void Dispose()
             {
-                Write($"Data: {Instance}");
+                Write($"Data: {Instance}, Count: {Count}");
                 m_writer.Dispose();
-                File.WriteAllText(m_logPath + ".done", DateTime.Now.ToString());
+                File.WriteAllText(m_logPath + ".done", Count.ToString());
             }
 
             /// <summary>
@@ -67,18 +73,33 @@ namespace StarcounterShadowspanTest
             /// </summary>
             public void EnsureInstance()
             {
-                Instance = Db.SQL<Data>("SELECT d FROM StarcounterShadowspanTest.Data d").FirstOrDefault();
-
-                if (Instance == null)
+                using (var sqlE = Db.SQL<Data>("SELECT d FROM StarcounterShadowspanTest.Data d ORDER BY d.Created").GetEnumerator())
                 {
-                    Write("Creating data");
-                    Instance = new Data();
-                }
-                else
-                {
-                    Write($"Read data: {Instance}");
-                }
+                    int count = 0;
 
+                    while (sqlE.MoveNext())
+                    {
+                        if (count == 0)
+                        {
+                            Instance = sqlE.Current;
+                        }
+                        count++;
+                    }
+                    if (Instance == null)
+                    {
+                        FirstRun = true;
+                        Write("[FirstRun] Creating data");
+                        Instance = new Data();
+                        count++;
+                    }
+                    else
+                    {
+                        Write($"[NotFirstRun] Read first data: {Instance}");
+                        var newInstance = new Data();
+                        Write($"[NotFirstRun] Created instance #{++count}: {newInstance}");
+                    }
+                    Count = count;
+                }
 
             }
 

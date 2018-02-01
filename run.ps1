@@ -1,4 +1,11 @@
 $projectDir = $PSScriptRoot
+
+$disableHash = $true
+
+if ($env:scshadowtest_hash -eq $true) {
+    $disableHash = $false
+}
+
 $shadowSpawnPath = Join-Path $projectDir "bin\ShadowSpawn.exe"
 $hdiffPath = Join-Path $projectDir "bin\hdiff.exe"
 $appExe = "StarcounterShadowspanTest.exe"
@@ -19,6 +26,19 @@ function GetDoneTimestamp() {
         return $file.LastWriteTime
     }
     return [System.DateTime]::MinValue
+}
+
+function GetCount() {
+    $file = gci $logDoneFile
+
+    if ($file.Exists) {
+        $str = gc $file
+        
+        if ($str) {
+            return [System.Int32]::Parse($str)
+        }
+    }
+    return 0
 }
 
 function GetFreeDrive() {
@@ -103,8 +123,9 @@ function Database-Restore() {
         [Parameter(Mandatory=$True,Position=1)]
         $scSettings
     )
-    Write-Host -ForegroundColor Green "Restoring db: $dbName"
-    robocopy $dbBackupDir $scSettings.PersonalDirectory /S /E /DCOPY:DA /COPY:DAT /IS /R:5 /W:1 /NP 
+    $logFile = "$debugLogs\robocopy_restore.log"
+    Write-Host -ForegroundColor Green "Restoring db: $dbName, logging : $logFile"
+    robocopy $dbBackupDir $scSettings.PersonalDirectory /S /E /DCOPY:DA /COPY:DAT /IS /R:5 /W:1 /NP /LOG:$logFile
 }
 
 function Database-Start() {    
@@ -117,6 +138,10 @@ function Database-Start() {
 }
 
 function App-Run() {
+    Param(
+        [Parameter(Mandatory=$True,Position=1)]
+        [int] $expectedCount
+    )
     $doneTime = GetDoneTimestamp
     Write-Host -ForegroundColor Green "Starting: $appExe"
 
@@ -131,6 +156,12 @@ function App-Run() {
     } else {       
         throw "Done state not updated"
     }    
+    $count = GetCount
+
+    if ($expectedCount -ne $count) {
+        throw "Expected: $expectedCount, got $count"
+    }
+    Write-Host -ForegroundColor Green "Instance count: $count"
 }
 
 function Get-RelativePath([string] $sub) {
@@ -230,7 +261,13 @@ function CopyScript-Create
         $logRel = "\logs"        
         $cmd = [System.IO.Path]::GetTempFileName() + ".cmd"
         Write-Host -ForegroundColor Green "[Copy-Script] $cmd, Personal: $personalDir"
-        Set-Content $cmd -Value "@echo off`n@echo Backup of $dbName, will run hash diff on files as well`n"                
+        
+        Set-Content $cmd -Value "@echo off`necho."                
+        Add-Content $cmd -Value "echo Backup of $dbName`n"                
+
+        if (!$disableHash) {
+            Add-Content $cmd -Value "Will run hash diff on files"
+        }
         Add-Content $cmd -Value "echo."
         $i = 0;
 
@@ -241,22 +278,26 @@ function CopyScript-Create
             $trgPath = Path-Combine $targetDir $rp
 
             # Diff the shadow drive with the real folder            
-            $logFile = "$debugLogs\diff_src_shadow_$i.log"
-            Add-Content $cmd -Value "`necho Logging diff to $logFile"
-            Add-Content $cmd -Value """$hdiffPath"" ""$srcPath"" ""$shadowPath"" --debug --hash --RedirectErrors -logfile=$logFile"
-            Add-Content $cmd -Value "echo."
+            if (!$disableHash) {
+                $logFile = "$debugLogs\diff_src_shadow_$i.log"
+                Add-Content $cmd -Value "`necho Logging diff to $logFile"
+                Add-Content $cmd -Value """$hdiffPath"" ""$srcPath"" ""$shadowPath"" --debug --hash --RedirectErrors -logfile=$logFile"
+                Add-Content $cmd -Value "echo."
+            }
 
             # Copy from shadow drive
             $logFile = "$debugLogs\robocopy_$i.log"
             Add-Content $cmd -Value "`necho Robocopy ""$shadowPath"" ""$trgPath"", logging to $logFile"
-            Add-Content $cmd -Value """$robocopyPath"" ""$shadowPath"" ""$trgPath"" /MIR /IS /FFT /Z /NDL /NP /R:5 /W:1 /LOG:$logFile /TEE"
+            Add-Content $cmd -Value """$robocopyPath"" ""$shadowPath"" ""$trgPath"" /MIR /IS /FFT /Z /NDL /NP /R:5 /W:1 /LOG:$logFile"
             Add-Content $cmd -Value "echo."
 
             # Diff the result 
-            $logFile = "$debugLogs\diff_shadow_backup_$i.log"
-            Add-Content $cmd -Value "`necho Logging diff to $logFile"
-            Add-Content $cmd -Value """$hdiffPath"" ""$shadowPath"" ""$trgPath"" --debug --hash --RedirectErrors -logfile=$logFile"
-            Add-Content $cmd -Value "echo."
+            if (!$disableHash) {
+                $logFile = "$debugLogs\diff_shadow_backup_$i.log"
+                Add-Content $cmd -Value "`necho Logging diff to $logFile"
+                Add-Content $cmd -Value """$hdiffPath"" ""$shadowPath"" ""$trgPath"" --debug --hash --RedirectErrors -logfile=$logFile"
+                Add-Content $cmd -Value "echo."
+            }
             $i++
         }
         return $cmd
@@ -281,7 +322,7 @@ function ShadowSpawn {
         $sp_dir = $sp_exe.Parent.FullName
         Push-Location $sp_dir
         Write-Host -ForegroundColor Green "[Shadowspawn] $sp_sourceDir => $sp_mappedDrive, Cmd: $sp_command"
-        &$sp_exe $sp_sourceDir $sp_mappedDrive $sp_command
+        &$sp_exe /verbosity=1 $sp_sourceDir $sp_mappedDrive $sp_command
     } finally {
         $ErrorActionPreference = $errorAction
         Pop-Location
@@ -289,13 +330,81 @@ function ShadowSpawn {
 
 }
 
+function StarcounterAdmin-KillAll {
+    Write-Host -ForegroundColor Green "[StarAdmin] kill all"
+    staradmin kill all
+}
+
+function StarcounterAdmin-StartServer {
+    Write-Host -ForegroundColor Green "[StarAdmin] start server"
+    staradmin start server
+}
+
+function Starcounter-Start {    
+    $svc = Get-Service StarcounterSystemService
+
+    if ($svc) {        
+        $svcName = $svc.Name
+
+        if ($svc.Status -ne "Running") {
+            Write-Host -ForegroundColor Green "[$svcName] Starting"
+             $svc.Start()
+             $svc.WaitForStatus('Running')        
+        } else {
+            Write-Host -ForegroundColor Green "[$svcName] Already started"
+        }
+        
+    } else {        
+        StarcounterAdmin-StartServer
+    }
+}
+
+function Starcounter-Stop {    
+    $svc = Get-Service StarcounterSystemService
+
+    if ($svc) {        
+        $svcName = $svc.Name
+
+        if ($svc.Status -ne "Stopped") {
+            Write-Host -ForegroundColor Green "[$svcName] Stopping"
+             $svc.Stop()
+             $svc.WaitForStatus('Stopped')        
+        } else {
+            Write-Host -ForegroundColor Green "[$svcName] Already stopped"
+        }
+        
+    } else {        
+        StarcounterAdmin-KillAll
+    }
+}
+
+function Starcounter-Restart {    
+    $svc = Get-Service StarcounterSystemService
+
+    if ($svc) {
+        $svcName = $svc.Name
+        Write-Host -ForegroundColor Green "[$svcName] Stopping"
+        $svc.Stop()
+        $svc.WaitForStatus('Stopped')
+        StarcounterAdmin-KillAll
+        Write-Host -ForegroundColor Green "[$svcName] Starting"
+        $svc.Start()
+        $svc.WaitForStatus('Running')
+    } else {
+        StarcounterAdmin-KillAll
+        StarcounterAdmin-StartServer
+    }
+}
+
 
 function MainLoop() {
-    Clear
-
-
-    # Clean up left over drives from shadowspawn
-    Get-PSDrive -PSProvider FileSystem | ? { !$_.Free  } | Remove-PSDrive
+    Param(
+        [Parameter(Mandatory=$True,Position=1)]
+        [int]$itteration
+    )
+    
+    Write-Host -ForegroundColor Green "Itteration: $itteration"
+    
 
     #Delete debug logs
 
@@ -312,7 +421,40 @@ function MainLoop() {
     }
 
 
+    
+
+    # Create a bat file for the files to copy
+    $drive = GetFreeDrive
+    $srcDir = $dbSettings.PersonalDirectory
+    Write-Host -ForegroundColor Green "FreeDrive: $drive"
+    $cmdFile = CopyScript-Create $dbSettings $srcDir $drive $dbBackupDir
+
+    # Now create a backup using shadowspawn with the app running
+    Shadowspawn $srcDir $drive $cmdFile
+
+    Database-Delete $dbSettings
+
+    # Seems like we need to stop the service for the database to be detected
+    Starcounter-Stop
+
+    Database-Restore $dbSettings
+    
+    Starcounter-Start
+    $dbSettings = GetStarcounterSettings
+                
+
+    # Call start on the database, this should run the restored db
+    Database-Start $dbSettings
+    $ec = $itteration + 2
+    App-Run $ec
+}
+
+$ErrorActionPreference = "Stop"
+
+try {
+    Clear
     # Build, needs roslyn
+
     Push-Location "$projectDir\src\StarcounterShadowspanTest"
     $msb15="${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\bin"
 
@@ -328,6 +470,8 @@ function MainLoop() {
     msbuild "/p:configuration=debug;platform=x64"
     Push-Location bin\debug
 
+    # Make sure the service is running
+    Starcounter-Start
 
     # Delete database if it exists
     $dbSettings = GetStarcounterSettings
@@ -338,32 +482,16 @@ function MainLoop() {
     $dbSettings = GetStarcounterSettings
 
     # Run the app, this is the first time and should create data
-    App-Run
+    App-Run 1
 
-    # Create a bat file for the files to copy
-    $drive = GetFreeDrive
-    $srcDir = $dbSettings.PersonalDirectory
-    Write-Host -ForegroundColor Green "FreeDrive: $drive"
-    $cmdFile = CopyScript-Create $dbSettings $srcDir $drive $dbBackupDir
+    $sleepSec = 2
 
-    # Now create a backup using shadowspawn with the app running
-    Shadowspawn $srcDir $drive $cmdFile
-
-    Database-Delete $dbSettings
-
-    Database-Restore $dbSettings
-    $dbSettings = GetStarcounterSettings
-
-    # Call start on the database, this should run the restored db
-    Database-Start $dbSettings
-
-    App-Run
-}
-
-$ErrorActionPreference = "Stop"
-
-try {
-    MainLoop
+    for ($i = 0; $i -le 100; $i++) {
+        MainLoop $i
+        Write-Host -ForegroundColor Green "Sleeping: $sleepSec seconds"
+        Start-Sleep -Seconds $sleepSec
+    }
+    
 } catch {
     $ex = $_.Exception
     
