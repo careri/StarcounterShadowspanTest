@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Any custom targets that are to be called can be placed here -->
+  <!-- There are no custom events, you just need to hook into the standard msbuild targets -->
+  <PropertyGroup>
+    <ShadowSpawnBinary>$(MsBuildProjectDirectory)\..\..\bin\ShadowSpawn.exe</ShadowSpawnBinary>
+  </PropertyGroup>
+
+  <Target Name="ShadowspawnCopy" BeforeTargets="BeforeBuild">
+    <Error Text="[ShadowSpawnBinary] ShadowSpawnBinary not defined, should be defined by the NuGet: ShadowSpawn.Binary" Condition=" '$(ShadowSpawnBinary)' == '' "/>
+    <Error Text="[ShadowSpawnBinary] $(ShadowSpawnBinary) doesnt exist" Condition="!Exists($(ShadowSpawnBinary))"/>
+    <Message Text="[ShadowSpawnBinary] Copying to output"/>
+    <ItemGroup>
+      <None Include="$(ShadowSpawnBinary)">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+  </Target>
+
+</Project>
