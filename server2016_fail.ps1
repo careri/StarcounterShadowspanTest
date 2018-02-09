@@ -65,6 +65,10 @@ try {
         mkdir $binDir | Out-Null
         Write-Host -ForegroundColor Green "Downloading shadowspawn.exe"
         (New-Object System.Net.WebClient).DownloadFile('https://github.com/careri/StarcounterShadowspanTest/raw/master/bin/ShadowSpawn.exe', $shadowSpawnPath)
+
+        if (!(Test-Path $shadowSpawnPath)) {
+            Write-Error "Failed to download: $shadowSpawnPath"
+        }
     }
 
     mkdir $dataDir -ErrorAction Ignore | Out-Null
