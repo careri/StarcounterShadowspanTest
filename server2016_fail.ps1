@@ -69,6 +69,12 @@ try {
         if (!(Test-Path $shadowSpawnPath)) {
             Write-Error "Failed to download: $shadowSpawnPath"
         }
+        # Test shadowspawn
+        Start-Process $shadowSpawnPath -NoNewWindow -Wait | Out-Null
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Shadowspawn doesn't run, missing VC++ Redist?"
+        }
     }
 
     mkdir $dataDir -ErrorAction Ignore | Out-Null
