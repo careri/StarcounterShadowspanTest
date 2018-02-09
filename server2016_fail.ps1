@@ -61,9 +61,9 @@ $dataStream = $null
 
 try {
     Clear
-    mkdir $dataDir -ErrorAction Ignore | Out-Null
-    mkdir $backupDir -ErrorAction Ignore | Out-Null
-    mkdir $binDir -ErrorAction Ignore | Out-Null
+    mkdir $dataDir | Out-Null
+    mkdir $backupDir | Out-Null
+    mkdir $binDir | Out-Null
     $ErrorActionPreference = "Stop"
 
     if (!(Test-Path $shadowSpawnPath)) {
@@ -75,7 +75,7 @@ try {
             Write-Error "Failed to download: $shadowSpawnPath"
         }
         # Test shadowspawn
-        Start-Process $shadowSpawnPath -NoNewWindow -Wait | Out-Null
+        Start-Process $shadowSpawnPath -ArgumentList "/?" -NoNewWindow -Wait | Out-Null
 
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Shadowspawn doesn't run, missing VC++ Redist?"
