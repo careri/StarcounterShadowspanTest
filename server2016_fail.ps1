@@ -1,3 +1,7 @@
+# You can run this script directly from an elevated powershell prompt
+#
+# iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/careri/StarcounterShadowspanTest/master/server2016_fail.ps1'))
+
 $projectDir = $PSScriptRoot
 $appDir = Join-Path $env:TEMP "server2016Fail"
 
