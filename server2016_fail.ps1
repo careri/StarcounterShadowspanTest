@@ -55,14 +55,19 @@ function ShadowSpawn {
 
 }
 
-$ErrorActionPreference = "Stop"
+
+$ErrorActionPreference = "SilentlyContinue"
 $dataStream = $null
 
 try {
     Clear
+    mkdir $dataDir -ErrorAction Ignore | Out-Null
+    mkdir $backupDir -ErrorAction Ignore | Out-Null
+    mkdir $binDir -ErrorAction Ignore | Out-Null
+    $ErrorActionPreference = "Stop"
 
     if (!(Test-Path $shadowSpawnPath)) {
-        mkdir $binDir -ErrorAction Ignore | Out-Null
+        
         Write-Host -ForegroundColor Green "Downloading shadowspawn.exe"
         (New-Object System.Net.WebClient).DownloadFile('https://github.com/careri/StarcounterShadowspanTest/raw/master/bin/ShadowSpawn.exe', $shadowSpawnPath)
 
@@ -77,8 +82,7 @@ try {
         }
     }
 
-    mkdir $dataDir -ErrorAction Ignore | Out-Null
-    mkdir $backupDir -ErrorAction Ignore | Out-Null
+    
     $dataFile = [System.IO.FileInfo]::new($dataFile)
     $dataStream = $dataFile.Open([System.IO.FileMode]::Create, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::Read)
 
