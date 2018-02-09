@@ -108,10 +108,13 @@ try {
     for ($i = 0; $i -le 100; $i++) {
         $time = Get-Date
         Write-Host -ForegroundColor Green "$i, Time = $time"
-        $bytes = [System.BitConverter]::GetBytes($time.Ticks)
+        $timestamp_bytes = [System.BitConverter]::GetBytes($time.Ticks)
+        $l = [System.Math]::Max($size, $timestamp_bytes.length)
+        $bytes = new-object byte[] $l
+        $timestamp_bytes.CopyTo($bytes, 0)
         $dataStream.Position = 0;
         $dataStream.Write($bytes, 0, $bytes.length)
-        $dataStream.Flush()
+        $dataStream.Flush($true)
 
         # Shadowspawn backup
         $drive = GetFreeDrive
