@@ -62,7 +62,7 @@ try {
     Clear
 
     if (!(Test-Path $shadowSpawnPath)) {
-        mkdir $binDir | Out-Null
+        mkdir $binDir -ErrorAction Ignore | Out-Null
         Write-Host -ForegroundColor Green "Downloading shadowspawn.exe"
         (New-Object System.Net.WebClient).DownloadFile('https://github.com/careri/StarcounterShadowspanTest/raw/master/bin/ShadowSpawn.exe', $shadowSpawnPath)
 
