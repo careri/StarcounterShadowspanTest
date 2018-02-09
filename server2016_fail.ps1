@@ -80,7 +80,7 @@ try {
         }        
     }
     # Test shadowspawn
-    Start-Process $shadowSpawnPath -ArgumentList "/?" -NoNewWindow -Wait | Out-Null
+    $ssOutput = & $shadowSpawnPath /?
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Shadowspawn doesn't run, missing VC++ Redist?"
