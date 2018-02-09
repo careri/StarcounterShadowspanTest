@@ -1,5 +1,6 @@
 $projectDir = $PSScriptRoot
-$shadowSpawnPath = Join-Path $projectDir "bin\ShadowSpawn.exe"
+$binDir = Join-Path $projectDir "bin"
+$shadowSpawnPath = Join-Path $binDir "ShadowSpawn.exe"
 $driveLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray()
 $robocopyPath = (Get-Command robocopy | select -First 1).Source
 $appDir = Join-Path $env:TEMP "server2016Fail"
@@ -21,27 +22,6 @@ function GetFreeDrive() {
     }
     throw "No free drive letter, cancelling mapping of drive";
 }
-
-
-
-function Get-RelativePath([string] $sub) {
-    $currPath = (Get-Location).Path
-    $relPath = $sub.Substring($currPath.Length + 1)    
-    return $relPath.TrimStart('.', '\')
-}
-
-function Path-Combine([string] $root, [string] $sub) {
-    if ($root.EndsWith(':')) {
-        $root = $root + "\"
-    }
-    if ($sub.StartsWith("\")) {
-        $sub = $sub.TrimStart('\')
-    }
-
-    $combinedPath = [System.IO.Path]::Combine($root, $sub)
-    return $combinedPath
-}
-
 
 
 function ShadowSpawn {
@@ -73,6 +53,12 @@ $dataStream = $null
 
 try {
     Clear
+
+    if (!(Test-Path $shadowSpawnPath)) {
+        mkdir $binDir | Out-Null
+        (New-Object System.Net.WebClient).DownloadFile('https://github.com/careri/StarcounterShadowspanTest/raw/master/bin/ShadowSpawn.exe', $shadowSpawnPath)
+    }
+
     mkdir $dataDir -ErrorAction Ignore | Out-Null
     mkdir $backupDir -ErrorAction Ignore | Out-Null
     $dataFile = [System.IO.FileInfo]::new($dataFile)
