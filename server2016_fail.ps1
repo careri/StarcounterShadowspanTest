@@ -22,8 +22,7 @@ $dataFile = Join-Path $dataDir "date.dat"
 $backupFile = Join-Path $backupDir "date.dat"
 
 function GetFreeDrive() {
-    $drives  = [System.IO.Directory]::GetLogicalDrives() | % { $_.Substring(0,1) }
-    #$drives = Get-PSDrive -PSProvider FileSystem | select -ExpandProperty Root | % { $_.Substring(0,1) }
+    $drives  = [System.IO.Directory]::GetLogicalDrives() | % { $_.Substring(0,1) }    
     $drives = $drives -join ""    
 
     foreach($c in $driveLetters) {
@@ -86,9 +85,25 @@ try {
         Write-Error "Shadowspawn doesn't run, missing VC++ Redist?"
     }
 
-    
+    # Set the size of the stream
+    $mb = 1024 * 1024
+    $size = 64 # mb
+    $envSize = $env:SERVER_FAIL_SIZE
+
+
+    if ($envSize) {
+        $size = [System.Int32]::Parse($envSize)
+        Write-Host "Using $size, from environment var SERVER_FAIL_SIZE"
+    } else {
+        Write-Host "Using default size: $size, use environment var SERVER_FAIL_SIZE to set another size in megabyte"
+    }
+    $size = $size * $mb
+
     $dataFile = [System.IO.FileInfo]::new($dataFile)
     $dataStream = $dataFile.Open([System.IO.FileMode]::Create, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::Read)
+    $dataStream.SetLength($size)
+
+
 
     for ($i = 0; $i -le 100; $i++) {
         $time = Get-Date
@@ -111,6 +126,8 @@ try {
         if (!$ok) {
             Write-Error "Backup failed"
         }
+        Write-Host "Sleeping 2 secs"
+        Start-Sleep -Seconds 2
     }
     
 } catch {
@@ -124,7 +141,11 @@ try {
 }
 finally
 {
- if ($dataStream) {
-    $dataStream.Dispose()
- }
+    $ErrorActionPreference = "SilentlyContinue"
+
+    if ($dataStream) {
+       $dataStream.Dispose()
+    }
+    rm $dataDir -Recurse | Out-Null
+    rm $backupDir -Recurse | Out-Null
 }
