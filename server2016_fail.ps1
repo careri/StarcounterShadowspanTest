@@ -1,9 +1,16 @@
 $projectDir = $PSScriptRoot
+$appDir = Join-Path $env:TEMP "server2016Fail"
+
+if (!$projectDir) {
+    # If running in memory we want have a $PSScriptRoot
+    $projectDir = $appDir
+}
+
 $binDir = Join-Path $projectDir "bin"
 $shadowSpawnPath = Join-Path $binDir "ShadowSpawn.exe"
 $driveLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray()
 $robocopyPath = (Get-Command robocopy | select -First 1).Source
-$appDir = Join-Path $env:TEMP "server2016Fail"
+
 $rcScript = Join-Path $appDir "run.cmd"
 $dataDir = Join-Path $appDir "data"
 $backupDir = Join-Path $appDir "backup"
@@ -56,6 +63,7 @@ try {
 
     if (!(Test-Path $shadowSpawnPath)) {
         mkdir $binDir | Out-Null
+        Write-Host -ForegroundColor Green "Downloading shadowspawn.exe"
         (New-Object System.Net.WebClient).DownloadFile('https://github.com/careri/StarcounterShadowspanTest/raw/master/bin/ShadowSpawn.exe', $shadowSpawnPath)
     }
 
