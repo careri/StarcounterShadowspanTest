@@ -87,15 +87,15 @@ try {
 
     # Set the size of the stream
     $mb = 1024 * 1024
-    $size = 64 # mb
+    $size = 0 # mb
     $envSize = $env:SERVER_FAIL_SIZE
 
 
     if ($envSize) {
         $size = [System.Int32]::Parse($envSize)
-        Write-Host "Using $size, from environment var SERVER_FAIL_SIZE"
+        Write-Host "Using $size MB, from environment var SERVER_FAIL_SIZE"
     } else {
-        Write-Host "Using default size: $size, use environment var SERVER_FAIL_SIZE to set another size in megabyte"
+        Write-Host "Using default size: $size MB, use environment var SERVER_FAIL_SIZE to set another size in megabyte"
     }
     $size = $size * $mb
 
