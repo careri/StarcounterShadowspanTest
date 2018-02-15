@@ -123,13 +123,15 @@ try {
         # Read the backup, only the first 8 bytes since the rest will be empty.
         [byte[]]$backupBytes = Get-Content -Path $backupFile -Encoding Byte -ReadCount $timeBytes.Length
         $backupTicks = [System.BitConverter]::ToInt64($backupBytes, 0)
+        $backupTime = Get-Date $backupTicks
+        Write-Host -ForegroundColor Green "$i, BackupTime = $backupTime"
 
         #$backupBytes = [System.IO.File]::ReadAllBytes($backupFile)
         #$ok = [System.Linq.Enumerable]::SequenceEqual($timeBytes, $backupBytes)
-        $ok = $timeTicks -eq $backupTicks
+        $ok = $time -eq $backupTime
         
         if (!$ok) {
-            Write-Error "Backup failed"
+            Write-Error "Backup failed, $time != $backupTime"
         }
         Write-Host "Sleeping 2 secs"
         Start-Sleep -Seconds 2
