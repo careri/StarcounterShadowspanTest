@@ -108,10 +108,11 @@ try {
     for ($i = 0; $i -le 100; $i++) {
         $time = Get-Date
         Write-Host -ForegroundColor Green "$i, Time = $time"
-        $bytes = [System.BitConverter]::GetBytes($time.Ticks)
+        $timeTicks = $time.Ticks
+        $timeBytes = [System.BitConverter]::GetBytes($timeTicks)
         $dataStream.Position = 0;
-        $dataStream.Write($bytes, 0, $bytes.length)
-        $dataStream.Flush()
+        $dataStream.Write($timeBytes, 0, $timeBytes.length)
+        $dataStream.Flush($true)
 
         # Shadowspawn backup
         $drive = GetFreeDrive
@@ -119,9 +120,13 @@ try {
         Set-Content $rcScript -Value $rcCMd
         ShadowSpawn $dataDir $drive $rcScript
 
-        # Read the backup
-        $backupBytes = [System.IO.File]::ReadAllBytes($backupFile)
-        $ok = [System.Linq.Enumerable]::SequenceEqual($bytes, $backupBytes)
+        # Read the backup, only the first 8 bytes since the rest will be empty.
+        [byte[]]$backupBytes = Get-Content -Path $backupFile -Encoding Byte -ReadCount $timeBytes.Length
+        $backupTicks = [System.BitConverter]::ToInt64($backupBytes, 0)
+
+        #$backupBytes = [System.IO.File]::ReadAllBytes($backupFile)
+        #$ok = [System.Linq.Enumerable]::SequenceEqual($timeBytes, $backupBytes)
+        $ok = $timeTicks -eq $backupTicks
         
         if (!$ok) {
             Write-Error "Backup failed"
