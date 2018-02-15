@@ -35,7 +35,7 @@ function GetFreeDrive() {
     }
     throw "No free drive letter, cancelling mapping of drive";
 }
-
+#Get-Content -Path $backupFile -Encoding Byte -ReadCount $timeBytes.Length
 
 function ShadowSpawn {
     Param(
@@ -58,7 +58,36 @@ function ShadowSpawn {
         $ErrorActionPreference = $errorAction
         Pop-Location
     }
-    Write-Host "ShadowSpawn done"
+    Write-Host -ForegroundColor Green "[Shadowspawn] done"
+}
+
+function ReadBytes {
+    Param(
+        [Parameter(Mandatory=$True,Position=1)]
+        [string]$file,
+        [Parameter(Mandatory=$True,Position=2)]
+        [int]$count        
+    )
+    Write-Host -ForegroundColor Green "[Bytes] $file, Reading $count bytes"
+    $errorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Ignore"
+    [System.IO.BinaryReader]$binaryReader=$null
+    try {
+        $binaryReader = New-Object System.IO.BinaryReader([System.IO.File]::Open($file, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read))
+        $arr = New-Object Byte[] $count
+        [int]$read = $binaryReader.Read($arr, 0,  $count)
+
+        if ($read -ne $count) {
+            throw "Not the expected read count $read"
+        }
+        return $arr
+    } finally {
+        if ($binaryReader) {
+            $binaryReader.Dispose()
+        }
+        $ErrorActionPreference = $errorAction
+        Pop-Location
+    }    
 }
 
 
@@ -135,13 +164,12 @@ try {
         ShadowSpawn $dataDir $drive $rcScript        
 
         # Read the backup, only the first 8 bytes since the rest will be empty.
-        [byte[]]$backupBytes = Get-Content -Path $backupFile -Encoding Byte -ReadCount $timeBytes.Length
+        [byte[]]$backupBytes = ReadBytes $backupFile $timeBytes.Length
         $backupTicks = [System.BitConverter]::ToInt64($backupBytes, 0)
         $backupTime = Get-Date $backupTicks
         Write-Host -ForegroundColor Green "$i, BackupTime = $backupTime"
 
-        #$backupBytes = [System.IO.File]::ReadAllBytes($backupFile)
-        #$ok = [System.Linq.Enumerable]::SequenceEqual($timeBytes, $backupBytes)
+
         $ok = $time -eq $backupTime
         
         if (!$ok) {
