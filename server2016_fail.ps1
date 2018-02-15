@@ -55,7 +55,7 @@ function ShadowSpawn {
         $ErrorActionPreference = $errorAction
         Pop-Location
     }
-
+    Write-Host "ShadowSpawn done"
 }
 
 
@@ -118,7 +118,7 @@ try {
         $drive = GetFreeDrive
         $rcCMd = "$robocopyPath $drive\ $backupDir * /MIR /R:1 /W:1"
         Set-Content $rcScript -Value $rcCMd
-        ShadowSpawn $dataDir $drive $rcScript
+        ShadowSpawn $dataDir $drive $rcScript        
 
         # Read the backup, only the first 8 bytes since the rest will be empty.
         [byte[]]$backupBytes = Get-Content -Path $backupFile -Encoding Byte -ReadCount $timeBytes.Length
