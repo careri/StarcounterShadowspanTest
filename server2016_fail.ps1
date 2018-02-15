@@ -116,7 +116,7 @@ try {
 
         # Shadowspawn backup
         $drive = GetFreeDrive
-        $rcCMd = "$robocopyPath $drive\ $backupDir * /MIR /R:1 /W:1"
+        $rcCMd = "$robocopyPath $drive\ $backupDir * /MIR /R:1 /W:1 /NP"
         Set-Content $rcScript -Value $rcCMd
         ShadowSpawn $dataDir $drive $rcScript        
 
