@@ -20,6 +20,9 @@ $dataDir = Join-Path $appDir "data"
 $backupDir = Join-Path $appDir "backup"
 $dataFile = Join-Path $dataDir "date.dat"
 $backupFile = Join-Path $backupDir "date.dat"
+$spVerbosity = 1
+$envSPVerbosity = $env:SERVER_FAIL_VERBOSITY
+
 
 function GetFreeDrive() {
     $drives  = [System.IO.Directory]::GetLogicalDrives() | % { $_.Substring(0,1) }    
@@ -50,7 +53,7 @@ function ShadowSpawn {
         $sp_dir = $sp_exe.Parent.FullName
         Push-Location $sp_dir
         Write-Host -ForegroundColor Green "[Shadowspawn] $sp_sourceDir => $sp_mappedDrive, Cmd: $sp_command"
-        &$sp_exe /verbosity=3 $sp_sourceDir $sp_mappedDrive $sp_command
+        &$sp_exe /verbosity=$spVerbosity $sp_sourceDir $sp_mappedDrive $sp_command
     } finally {
         $ErrorActionPreference = $errorAction
         Pop-Location
@@ -64,6 +67,17 @@ $dataStream = $null
 
 try {
     Clear
+
+    if ($envSPVerbosity) {
+        $i = [System.Int32]::Parse($envSPVerbosity)
+
+        if ($i -ge 0 -and $i -le 4) {
+            $spVerbosity = $i
+            Write-Host "Verbosity from SERVER_FAIL_VERBOSITY=$spVerbosity"
+        }
+    }
+    Write-Host "Verbosity=$spVerbosity"
+
     mkdir $dataDir | Out-Null
     mkdir $backupDir | Out-Null
     mkdir $binDir | Out-Null
